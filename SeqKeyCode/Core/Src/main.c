@@ -94,6 +94,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET) {
+		  // Button 1 pressed
+	      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+	      HAL_Delay(300); // delay
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
