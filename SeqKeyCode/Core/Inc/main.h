@@ -63,20 +63,20 @@ void Error_Handler(void);
 #define pinkie_GPIO_Port GPIOC
 #define ring_Pin GPIO_PIN_3
 #define ring_GPIO_Port GPIOC
-#define index_Pin GPIO_PIN_2
-#define index_GPIO_Port GPIOA
-#define middle_Pin GPIO_PIN_3
-#define middle_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
-#define thumb_Pin GPIO_PIN_10
-#define thumb_GPIO_Port GPIOA
+#define index_Pin GPIO_PIN_4
+#define index_GPIO_Port GPIOC
+#define middle_Pin GPIO_PIN_10
+#define middle_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
+#define thumb_Pin GPIO_PIN_8
+#define thumb_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

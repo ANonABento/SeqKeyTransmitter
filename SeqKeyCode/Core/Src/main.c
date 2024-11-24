@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -86,6 +87,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -94,8 +96,23 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET) {
-		  // Button 1 pressed
+	  if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == GPIO_PIN_RESET) { // thumb
+	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+	  	  HAL_Delay(300); // delay
+	  }
+	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == GPIO_PIN_RESET) { // index
+	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+	  	  HAL_Delay(300); // delay
+	  }
+	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET) { // middle
+	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+	  	  HAL_Delay(300); // delay
+	  }
+	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET) { // ring
+	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+	  	  HAL_Delay(300); // delay
+	  }
+	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET) { // pink
 	      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
 	      HAL_Delay(300); // delay
 	  }
