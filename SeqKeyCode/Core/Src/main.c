@@ -165,6 +165,8 @@ void process_sequence() {
 }
 
 void send_word() {
+	HAL_UART_Transmit(&huart2, (uint8_t *)word_buffer, strlen(word_buffer), HAL_MAX_DELAY);
+
 	printf("String sent: %s\r\n", word_buffer);
 
 	// Reset word buffer
