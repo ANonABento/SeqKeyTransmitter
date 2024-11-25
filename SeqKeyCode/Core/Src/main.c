@@ -20,6 +20,8 @@
 #include "main.h"
 #include "usart.h"
 #include "gpio.h"
+#include <string.h> // For memset and strcmp
+#include <stdio.h>  // For printf
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,6 +35,15 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+	// Sequence buffer
+#define SEQ_BUFFER_SIZE 8
+char seq_buffer[SEQ_BUFFER_SIZE];
+uint8_t seq_index = 0;
+
+	// Word buffer
+#define WORD_BUFFER_SIZE 50
+char word_buffer[WORD_BUFFER_SIZE];
+uint8_t word_index = 0;
 
 /* USER CODE END PD */
 
@@ -55,6 +66,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+int _write(int file, char *ptr, int len) {
+	HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+	return len;
+}
 
 /* USER CODE END 0 */
 
@@ -90,31 +106,77 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  void add_to_sequence(char key) {
+      if (seq_index < SEQ_BUFFER_SIZE) {
+          seq_buffer[seq_index++] = key;
+      }
+  }
+
+  char process_sequence() {
+      // Example: Map sequences to letters
+      if (strcmp(seq_buffer, "TI") == 0) return 'A';  // Thumb + Index = 'A'
+      if (strcmp(seq_buffer, "TMM") == 0) return 'B'; // Thumb + Middle + Middle = 'B'
+      // Add more mappings...
+
+      // Clear sequence buffer after processing
+      memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
+      seq_index = 0;
+
+      return 0; // Return 0 if no match
+  }
+
+  void send_word(const char *word) {
+      // Print the word to the debug console (if UART is enabled)
+      printf("Word: %s\n", word);
+
+      // Toggle an LED as feedback
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+      HAL_Delay(300);
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == GPIO_PIN_RESET) { // thumb
-	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-	  	  HAL_Delay(300); // delay
+	  // Poll buttons for input
+	  if (HAL_GPIO_ReadPin(thumb_GPIO_Port, thumb_Pin) == GPIO_PIN_RESET) {
+		  HAL_Delay(50); // Debounce delay
+	      add_to_sequence('T'); // Add "thumb" to sequence
 	  }
-	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == GPIO_PIN_RESET) { // index
-	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-	  	  HAL_Delay(300); // delay
+	  if (HAL_GPIO_ReadPin(index_GPIO_Port, index_Pin) == GPIO_PIN_RESET) {
+	      HAL_Delay(50); // Debounce delay
+	      add_to_sequence('I'); // Add "index" to sequence
 	  }
-	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET) { // middle
-	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-	  	  HAL_Delay(300); // delay
+	  if (HAL_GPIO_ReadPin(middle_GPIO_Port, middle_Pin) == GPIO_PIN_RESET) {
+	      HAL_Delay(50); // Debounce delay
+	      add_to_sequence('M'); // Add "middle" to sequence
 	  }
-	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET) { // ring
-	  	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-	  	  HAL_Delay(300); // delay
+	  if (HAL_GPIO_ReadPin(ring_GPIO_Port, ring_Pin) == GPIO_PIN_RESET) {
+	      HAL_Delay(50); // Debounce delay
+	      add_to_sequence('R'); // Add "ring" to sequence
 	  }
-	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET) { // pink
-	      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-	      HAL_Delay(300); // delay
+	  if (HAL_GPIO_ReadPin(pinkie_GPIO_Port, pinkie_Pin) == GPIO_PIN_RESET) {
+	      HAL_Delay(50); // Debounce delay
+	      add_to_sequence('P'); // Add "pinkie" to sequence
+	  }
+
+	  // Confirm letter when the thumb button is pressed again
+	  if (HAL_GPIO_ReadPin(thumb_GPIO_Port, thumb_Pin) == GPIO_PIN_RESET) {
+	      HAL_Delay(50); // Debounce delay
+
+	      char letter = process_sequence();
+	      if (letter) {
+	    	  word_buffer[word_index++] = letter; // Add letter to the word
+	      }
+	      else {
+	    	  // If no letter, assume the word is complete
+	          send_word(word_buffer);
+	          memset(word_buffer, 0, WORD_BUFFER_SIZE);
+	          word_index = 0;
+	      }
 	  }
     /* USER CODE END WHILE */
 
