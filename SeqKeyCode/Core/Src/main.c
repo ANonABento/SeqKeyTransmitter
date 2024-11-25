@@ -35,15 +35,18 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-	// Sequence buffer
-#define SEQ_BUFFER_SIZE 8
-char seq_buffer[SEQ_BUFFER_SIZE];
-uint8_t seq_index = 0;
 
-	// Word buffer
-#define WORD_BUFFER_SIZE 50
-char word_buffer[WORD_BUFFER_SIZE];
+#define SEQ_BUFFER_SIZE 32
+#define WORD_BUFFER_SIZE 32
+
+char seq_buffer[SEQ_BUFFER_SIZE] = {0};
+char word_buffer[WORD_BUFFER_SIZE] = {0};
+uint8_t seq_index = 0;
 uint8_t word_index = 0;
+
+uint8_t button_state[5] = {0};      // Current button state
+uint8_t button_prev_state[5] = {0}; // Previous button state
+char button_chars[5] = {'#', '|', '-', '/', '('};
 
 /* USER CODE END PD */
 
@@ -70,6 +73,112 @@ void SystemClock_Config(void);
 int _write(int file, char *ptr, int len) {
 	HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, HAL_MAX_DELAY);
 	return len;
+}
+
+void update_button_states();
+void add_to_sequence(char key);
+char process_sequence();
+void send_word(const char *word);
+void reset_buffers();
+void log_button_press(void);
+
+void update_button_states() {
+	button_prev_state[0] = button_state[0];
+	button_prev_state[1] = button_state[1];
+	button_prev_state[2] = button_state[2];
+	button_prev_state[3] = button_state[3];
+	button_prev_state[4] = button_state[4];
+
+	button_state[0] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == GPIO_PIN_RESET; //thumb
+	button_state[1] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == GPIO_PIN_RESET; //index
+	button_state[2] = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET; //middle
+	button_state[3] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET; //ring
+	button_state[4] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET; //pink
+}
+
+void log_button_press(void) {
+	for (int i = 0; i < 5; i++) {
+		if (button_prev_state[i] == 0 && button_state[i] == 1) { // Button pressed
+			printf("Button %c was pressed.\r\n", button_chars[i]);
+		}
+	}
+}
+
+void add_to_sequence(char key) {
+	if (seq_index < SEQ_BUFFER_SIZE - 1) {
+		seq_buffer[seq_index++] = key;
+		seq_buffer[seq_index] = '\0'; // Null-terminate the sequence
+	}
+}
+
+char process_sequence() {
+	// Letter mappings (A-Z)
+	if (strcmp(seq_buffer, "//-") == 0 || strcmp(seq_buffer, "/") == 0) return 'A';
+	if (strcmp(seq_buffer, "|((") == 0 || strcmp(seq_buffer, "-(") == 0) return 'B';
+	if (strcmp(seq_buffer, "(") == 0) return 'C';
+	if (strcmp(seq_buffer, "|(") == 0) return 'D';
+	if (strcmp(seq_buffer, "---") == 0 || strcmp(seq_buffer, "-") == 0) return 'E';
+	if (strcmp(seq_buffer, "|--") == 0 || strcmp(seq_buffer, "--") == 0) return 'F';
+	if (strcmp(seq_buffer, "(-|") == 0) return 'G';
+	if (strcmp(seq_buffer, "|-|") == 0 || strcmp(seq_buffer, "||") == 0) return 'H';
+	if (strcmp(seq_buffer, "-|-") == 0 || strcmp(seq_buffer, "|") == 0) return 'I';
+	if (strcmp(seq_buffer, "-|(") == 0) return 'J';
+	if (strcmp(seq_buffer, "|//") == 0) return 'K';
+	if (strcmp(seq_buffer, "-|") == 0) return 'L';
+	if (strcmp(seq_buffer, "|//|") == 0 || strcmp(seq_buffer, "|//") == 0) return 'M';
+	if (strcmp(seq_buffer, "|/|") == 0 || strcmp(seq_buffer, "|/") == 0) return 'N';
+	if (strcmp(seq_buffer, "((") == 0) return 'O';
+	if (strcmp(seq_buffer, "|(-") == 0 || strcmp(seq_buffer, "/-") == 0) return 'P';
+	if (strcmp(seq_buffer, "((/") == 0) return 'Q';
+	if (strcmp(seq_buffer, "|(/") == 0 || strcmp(seq_buffer, "(/") == 0) return 'R';
+	if (strcmp(seq_buffer, "(-(") == 0 || strcmp(seq_buffer, "(-") == 0) return 'S';
+	if (strcmp(seq_buffer, "-|") == 0) return 'T';
+	if (strcmp(seq_buffer, "|(|") == 0 || strcmp(seq_buffer, "(|") == 0) return 'U';
+	if (strcmp(seq_buffer, "/(/") == 0 || strcmp(seq_buffer, "/(") == 0) return 'V';
+	if (strcmp(seq_buffer, "////") == 0 || strcmp(seq_buffer, "///") == 0) return 'W';
+	if (strcmp(seq_buffer, "//") == 0) return 'X';
+	if (strcmp(seq_buffer, "/|/") == 0 || strcmp(seq_buffer, "/|") == 0) return 'Y';
+	if (strcmp(seq_buffer, "-/-") == 0 || strcmp(seq_buffer, "-/") == 0) return 'Z';
+
+	// Number mappings (1-9, 0)
+	if (strcmp(seq_buffer, "1") == 0) return '1';
+	if (strcmp(seq_buffer, "2") == 0) return '2';
+	if (strcmp(seq_buffer, "3") == 0) return '3';
+	if (strcmp(seq_buffer, "4") == 0) return '4';
+	if (strcmp(seq_buffer, "5") == 0) return '5';
+	if (strcmp(seq_buffer, "6") == 0) return '6';
+	if (strcmp(seq_buffer, "7") == 0) return '7';
+	if (strcmp(seq_buffer, "8") == 0) return '8';
+	if (strcmp(seq_buffer, "9") == 0) return '9';
+	if (strcmp(seq_buffer, "0") == 0) return '0';
+
+	// Control Commands
+	if (strcmp(seq_buffer, "combination of (-|/") == 0) return '_';  // Reset sequence
+	if (strcmp(seq_buffer, "(/-|") == 0) return '-';  // Backspace
+	if (strcmp(seq_buffer, "#") == 0) return '>';  // Enter letter
+	if (strcmp(seq_buffer, "##") == 0) return '@';  // Send word
+
+	// Clear sequence buffer after processing
+	memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
+	seq_index = 0;
+
+	return 0; // Return 0 if no match
+}
+
+void send_word(const char *word) {
+	printf("Word sent: %s\r\n", word);
+
+	// Toggle an LED as feedback
+	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+	HAL_Delay(300);
+	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+}
+
+void reset_buffers() {
+	memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
+	memset(word_buffer, 0, WORD_BUFFER_SIZE);
+	seq_index = 0;
+	word_index = 0;
 }
 
 /* USER CODE END 0 */
@@ -106,78 +215,54 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  void add_to_sequence(char key) {
-      if (seq_index < SEQ_BUFFER_SIZE) {
-          seq_buffer[seq_index++] = key;
-      }
-  }
-
-  char process_sequence() {
-      // Example: Map sequences to letters
-      if (strcmp(seq_buffer, "TI") == 0) return 'A';  // Thumb + Index = 'A'
-      if (strcmp(seq_buffer, "TMM") == 0) return 'B'; // Thumb + Middle + Middle = 'B'
-      // Add more mappings...
-
-      // Clear sequence buffer after processing
-      memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
-      seq_index = 0;
-
-      return 0; // Return 0 if no match
-  }
-
-  void send_word(const char *word) {
-      // Print the word to the debug console (if UART is enabled)
-      printf("Word: %s\n", word);
-
-      // Toggle an LED as feedback
-      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-      HAL_Delay(300);
-      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // toggle LED
-  }
+  printf("UART Initialized\r\n");
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-	  // Poll buttons for input
-	  if (HAL_GPIO_ReadPin(thumb_GPIO_Port, thumb_Pin) == GPIO_PIN_RESET) {
-		  HAL_Delay(50); // Debounce delay
-	      add_to_sequence('T'); // Add "thumb" to sequence
-	  }
-	  if (HAL_GPIO_ReadPin(index_GPIO_Port, index_Pin) == GPIO_PIN_RESET) {
-	      HAL_Delay(50); // Debounce delay
-	      add_to_sequence('I'); // Add "index" to sequence
-	  }
-	  if (HAL_GPIO_ReadPin(middle_GPIO_Port, middle_Pin) == GPIO_PIN_RESET) {
-	      HAL_Delay(50); // Debounce delay
-	      add_to_sequence('M'); // Add "middle" to sequence
-	  }
-	  if (HAL_GPIO_ReadPin(ring_GPIO_Port, ring_Pin) == GPIO_PIN_RESET) {
-	      HAL_Delay(50); // Debounce delay
-	      add_to_sequence('R'); // Add "ring" to sequence
-	  }
-	  if (HAL_GPIO_ReadPin(pinkie_GPIO_Port, pinkie_Pin) == GPIO_PIN_RESET) {
-	      HAL_Delay(50); // Debounce delay
-	      add_to_sequence('P'); // Add "pinkie" to sequence
+  while (1) {
+	  update_button_states();
+	  log_button_press();
+
+	  // Detect button press and release
+	  for (int i = 0; i < 5; i++) {
+		  if (button_prev_state[i] == 0 && button_state[i] == 1) { // Button pressed
+			  add_to_sequence(button_chars[i]);
+			  printf("Button pressed: %c\r\n", button_chars[i]);
+		  }
 	  }
 
-	  // Confirm letter when the thumb button is pressed again
-	  if (HAL_GPIO_ReadPin(thumb_GPIO_Port, thumb_Pin) == GPIO_PIN_RESET) {
-	      HAL_Delay(50); // Debounce delay
+	  // Check for control commands
+	  char command = process_sequence();
+	  if (command) {
+		  printf("Command executed: %c\r\n", command);
 
-	      char letter = process_sequence();
-	      if (letter) {
-	    	  word_buffer[word_index++] = letter; // Add letter to the word
-	      }
-	      else {
-	    	  // If no letter, assume the word is complete
-	          send_word(word_buffer);
-	          memset(word_buffer, 0, WORD_BUFFER_SIZE);
-	          word_index = 0;
-	      }
+		  if (command == '>') { // Enter letter
+			  char letter = process_sequence();
+			  if (letter) {
+				  word_buffer[word_index++] = letter;
+				  word_buffer[word_index] = '\0';
+				  printf("Letter added: %c\r\n", letter);
+			  }
+		  } else if (command == '@') { // Send word
+			  send_word(word_buffer);
+			  reset_buffers();
+		  } else if (command == '_') { // Reset sequence
+			  reset_buffers();
+		  } else if (command == '-') { // Backspace
+			  if (word_index > 0) {
+				  word_buffer[--word_index] = '\0';
+				  printf("Backspace executed\r\n");
+			  }
+		  }
+
+		  // Clear sequence buffer after processing
+		  memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
+		  seq_index = 0;
 	  }
+
+	  HAL_Delay(50); // Reduce CPU load
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
