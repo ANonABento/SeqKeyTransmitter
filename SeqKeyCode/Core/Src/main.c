@@ -39,14 +39,14 @@
 #define SEQ_BUFFER_SIZE 32
 #define WORD_BUFFER_SIZE 32
 
-char seq_buffer[SEQ_BUFFER_SIZE] = {0};
-char word_buffer[WORD_BUFFER_SIZE] = {0};
-uint8_t seq_index = 0;
-uint8_t word_index = 0;
+char seq_buffer[SEQ_BUFFER_SIZE] = {0}; // Holds the 4-button sequence
+char word_buffer[WORD_BUFFER_SIZE] = {0}; // Holds the constructed string
+uint8_t seq_index = 0; // Tracks the sequence length
+uint8_t word_index = 0; // Tracks the word length
 
 uint8_t button_state[5] = {0};      // Current button state
 uint8_t button_prev_state[5] = {0}; // Previous button state
-char button_chars[5] = {'#', '|', '-', '/', '('};
+char button_chars[4] = {'|', '-', '/', '('}; // Buttons for sequence (excluding thumb)
 
 /* USER CODE END PD */
 
@@ -76,99 +76,102 @@ int _write(int file, char *ptr, int len) {
 }
 
 void update_button_states();
-void add_to_sequence(char key);
-char process_sequence();
-void send_word(const char *word);
+void process_sequence();
 void reset_buffers();
-void log_button_press(void);
+void send_string();
 
 void update_button_states() {
-	button_prev_state[0] = button_state[0];
-	button_prev_state[1] = button_state[1];
-	button_prev_state[2] = button_state[2];
-	button_prev_state[3] = button_state[3];
-	button_prev_state[4] = button_state[4];
-
-	button_state[0] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == GPIO_PIN_RESET; //thumb
-	button_state[1] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == GPIO_PIN_RESET; //index
-	button_state[2] = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET; //middle
-	button_state[3] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET; //ring
-	button_state[4] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET; //pink
-}
-
-void log_button_press(void) {
+	// Update previous states
 	for (int i = 0; i < 5; i++) {
-		if (button_prev_state[i] == 0 && button_state[i] == 1) { // Button pressed
-			printf("Button %c was pressed.\r\n", button_chars[i]);
-		}
+		button_prev_state[i] = button_state[i];
 	}
+
+	// Read current button states
+	button_state[0] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == GPIO_PIN_RESET; // Thumb
+	button_state[1] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == GPIO_PIN_RESET; // Index
+	button_state[2] = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET; // Middle
+	button_state[3] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET; // Ring
+	button_state[4] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET; // Pinky
 }
 
-void add_to_sequence(char key) {
-	if (seq_index < SEQ_BUFFER_SIZE - 1) {
-		seq_buffer[seq_index++] = key;
-		seq_buffer[seq_index] = '\0'; // Null-terminate the sequence
-	}
-}
+void process_sequence() {
+	// Map sequence to a letter
+	char letter = 0;
 
-char process_sequence() {
 	// Letter mappings (A-Z)
-	if (strcmp(seq_buffer, "//-") == 0 || strcmp(seq_buffer, "/") == 0) return 'A';
-	if (strcmp(seq_buffer, "|((") == 0 || strcmp(seq_buffer, "-(") == 0) return 'B';
-	if (strcmp(seq_buffer, "(") == 0) return 'C';
-	if (strcmp(seq_buffer, "|(") == 0) return 'D';
-	if (strcmp(seq_buffer, "---") == 0 || strcmp(seq_buffer, "-") == 0) return 'E';
-	if (strcmp(seq_buffer, "|--") == 0 || strcmp(seq_buffer, "--") == 0) return 'F';
-	if (strcmp(seq_buffer, "(-|") == 0) return 'G';
-	if (strcmp(seq_buffer, "|-|") == 0 || strcmp(seq_buffer, "||") == 0) return 'H';
-	if (strcmp(seq_buffer, "-|-") == 0 || strcmp(seq_buffer, "|") == 0) return 'I';
-	if (strcmp(seq_buffer, "-|(") == 0) return 'J';
-	if (strcmp(seq_buffer, "|//") == 0) return 'K';
-	if (strcmp(seq_buffer, "-|") == 0) return 'L';
-	if (strcmp(seq_buffer, "|//|") == 0 || strcmp(seq_buffer, "|//") == 0) return 'M';
-	if (strcmp(seq_buffer, "|/|") == 0 || strcmp(seq_buffer, "|/") == 0) return 'N';
-	if (strcmp(seq_buffer, "((") == 0) return 'O';
-	if (strcmp(seq_buffer, "|(-") == 0 || strcmp(seq_buffer, "/-") == 0) return 'P';
-	if (strcmp(seq_buffer, "((/") == 0) return 'Q';
-	if (strcmp(seq_buffer, "|(/") == 0 || strcmp(seq_buffer, "(/") == 0) return 'R';
-	if (strcmp(seq_buffer, "(-(") == 0 || strcmp(seq_buffer, "(-") == 0) return 'S';
-	if (strcmp(seq_buffer, "-|") == 0) return 'T';
-	if (strcmp(seq_buffer, "|(|") == 0 || strcmp(seq_buffer, "(|") == 0) return 'U';
-	if (strcmp(seq_buffer, "/(/") == 0 || strcmp(seq_buffer, "/(") == 0) return 'V';
-	if (strcmp(seq_buffer, "////") == 0 || strcmp(seq_buffer, "///") == 0) return 'W';
-	if (strcmp(seq_buffer, "//") == 0) return 'X';
-	if (strcmp(seq_buffer, "/|/") == 0 || strcmp(seq_buffer, "/|") == 0) return 'Y';
-	if (strcmp(seq_buffer, "-/-") == 0 || strcmp(seq_buffer, "-/") == 0) return 'Z';
+	if (strcmp(seq_buffer, "//-") == 0 || strcmp(seq_buffer, "/") == 0) letter = 'A';
+	if (strcmp(seq_buffer, "|((") == 0 || strcmp(seq_buffer, "-(") == 0) letter = 'B';
+	if (strcmp(seq_buffer, "(") == 0) letter = 'C';
+	if (strcmp(seq_buffer, "|(") == 0) letter = 'D';
+	if (strcmp(seq_buffer, "---") == 0 || strcmp(seq_buffer, "-") == 0) letter = 'E';
+	if (strcmp(seq_buffer, "|--") == 0 || strcmp(seq_buffer, "--") == 0) letter = 'F';
+	if (strcmp(seq_buffer, "(-|") == 0) letter = 'G';
+	if (strcmp(seq_buffer, "|-|") == 0 || strcmp(seq_buffer, "||") == 0) letter = 'H';
+	if (strcmp(seq_buffer, "-|-") == 0 || strcmp(seq_buffer, "|") == 0) letter = 'I';
+	if (strcmp(seq_buffer, "-|(") == 0) letter = 'J';
+	if (strcmp(seq_buffer, "|//") == 0) letter = 'K';
+	if (strcmp(seq_buffer, "|-") == 0) letter = 'L';
+	if (strcmp(seq_buffer, "|//|") == 0 || strcmp(seq_buffer, "|//") == 0) letter = 'M';
+	if (strcmp(seq_buffer, "|/|") == 0 || strcmp(seq_buffer, "|/") == 0) letter = 'N';
+	if (strcmp(seq_buffer, "((") == 0) letter = 'O';
+	if (strcmp(seq_buffer, "|(-") == 0 || strcmp(seq_buffer, "/-") == 0) letter = 'P';
+	if (strcmp(seq_buffer, "((/") == 0) letter = 'Q';
+	if (strcmp(seq_buffer, "|(/") == 0 || strcmp(seq_buffer, "(/") == 0) letter = 'R';
+	if (strcmp(seq_buffer, "(-(") == 0 || strcmp(seq_buffer, "(-") == 0) letter = 'S';
+	if (strcmp(seq_buffer, "-|") == 0) letter = 'T';
+	if (strcmp(seq_buffer, "|(|") == 0 || strcmp(seq_buffer, "(|") == 0) letter = 'U';
+	if (strcmp(seq_buffer, "/(/") == 0 || strcmp(seq_buffer, "/(") == 0) letter = 'V';
+	if (strcmp(seq_buffer, "////") == 0 || strcmp(seq_buffer, "///") == 0) letter = 'W';
+	if (strcmp(seq_buffer, "//") == 0) letter = 'X';
+	if (strcmp(seq_buffer, "/|/") == 0 || strcmp(seq_buffer, "/|") == 0) letter = 'Y';
+	if (strcmp(seq_buffer, "-/-") == 0 || strcmp(seq_buffer, "-/") == 0) letter = 'Z';
 
 	// Number mappings (1-9, 0)
-	if (strcmp(seq_buffer, "1") == 0) return '1';
-	if (strcmp(seq_buffer, "2") == 0) return '2';
-	if (strcmp(seq_buffer, "3") == 0) return '3';
-	if (strcmp(seq_buffer, "4") == 0) return '4';
-	if (strcmp(seq_buffer, "5") == 0) return '5';
-	if (strcmp(seq_buffer, "6") == 0) return '6';
-	if (strcmp(seq_buffer, "7") == 0) return '7';
-	if (strcmp(seq_buffer, "8") == 0) return '8';
-	if (strcmp(seq_buffer, "9") == 0) return '9';
-	if (strcmp(seq_buffer, "0") == 0) return '0';
+//	if (strcmp(seq_buffer, "1") == 0) letter = '1';
+//	if (strcmp(seq_buffer, "2") == 0) letter = '2';
+//	if (strcmp(seq_buffer, "3") == 0) letter = '3';
+//	if (strcmp(seq_buffer, "4") == 0) letter = '4';
+//	if (strcmp(seq_buffer, "5") == 0) letter = '5';
+//	if (strcmp(seq_buffer, "6") == 0) letter = '6';
+//	if (strcmp(seq_buffer, "7") == 0) letter = '7';
+//	if (strcmp(seq_buffer, "8") == 0) letter = '8';
+//	if (strcmp(seq_buffer, "9") == 0) letter = '9';
+//	if (strcmp(seq_buffer, "0") == 0) letter = '0';
 
 	// Control Commands
-	if (strcmp(seq_buffer, "combination of (-|/") == 0) return '_';  // Reset sequence
-	if (strcmp(seq_buffer, "(/-|") == 0) return '-';  // Backspace
-	if (strcmp(seq_buffer, "#") == 0) return '>';  // Enter letter
-	if (strcmp(seq_buffer, "##") == 0) return '@';  // Send word
+//	if (strcmp(seq_buffer, "combination of (-|/") == 0) letter = '_';  // Reset sequence
+//	if (strcmp(seq_buffer, "(/-|") == 0) letter = '-';  // Backspace
+//	if (strcmp(seq_buffer, "#") == 0) letter = '>';  // Enter letter
+//	if (strcmp(seq_buffer, "##") == 0) letter = '@';  // Send word
+
+	if (letter) {
+		// Append the letter to the word buffer
+		if (word_index < WORD_BUFFER_SIZE - 1) {
+			word_buffer[word_index++] = letter;
+			word_buffer[word_index] = '\0'; // Null-terminate the string
+			printf("Letter added: %c\r\n", letter);
+		}
+		else {
+			printf("Word buffer full!\r\n");
+		}
+	}
+	else {
+		printf("Invalid sequence: %s\r\n", seq_buffer);
+	}
 
 	// Clear sequence buffer after processing
 	memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
 	seq_index = 0;
-
-	return 0; // Return 0 if no match
 }
 
-void send_word(const char *word) {
-	printf("Word sent: %s\r\n", word);
+void send_word() {
+	printf("String sent: %s\r\n", word_buffer);
 
-	// Toggle an LED as feedback
+	// Reset word buffer
+	memset(word_buffer, 0, WORD_BUFFER_SIZE);
+	word_index = 0;
+
+	// Toggle LED for feedback
 	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 	HAL_Delay(300);
 	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
@@ -215,7 +218,7 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  printf("UART Initialized\r\n");
+  printf("UART Initialized \r\n");
 
   /* USER CODE END 2 */
 
@@ -223,43 +226,33 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1) {
 	  update_button_states();
-	  log_button_press();
 
-	  // Detect button press and release
-	  for (int i = 0; i < 5; i++) {
+	  // Detect button presses for sequence
+	  for (int i = 1; i <= 4; i++) { // Exclude thumb
 		  if (button_prev_state[i] == 0 && button_state[i] == 1) { // Button pressed
-			  add_to_sequence(button_chars[i]);
-			  printf("Button pressed: %c\r\n", button_chars[i]);
+			  if (seq_index < SEQ_BUFFER_SIZE - 1) {
+				  seq_buffer[seq_index++] = button_chars[i - 1];
+				  seq_buffer[seq_index] = '\0'; // Null-terminate
+				  printf("Button added to sequence: %c\r\n", button_chars[i - 1]);
+			  }
+			  else {
+				  printf("Sequence buffer full!\r\n");
+			  }
 		  }
 	  }
 
-	  // Check for control commands
-	  char command = process_sequence();
-	  if (command) {
-		  printf("Command executed: %c\r\n", command);
-
-		  if (command == '>') { // Enter letter
-			  char letter = process_sequence();
-			  if (letter) {
-				  word_buffer[word_index++] = letter;
-				  word_buffer[word_index] = '\0';
-				  printf("Letter added: %c\r\n", letter);
-			  }
-		  } else if (command == '@') { // Send word
-			  send_word(word_buffer);
-			  reset_buffers();
-		  } else if (command == '_') { // Reset sequence
-			  reset_buffers();
-		  } else if (command == '-') { // Backspace
-			  if (word_index > 0) {
-				  word_buffer[--word_index] = '\0';
-				  printf("Backspace executed\r\n");
-			  }
-		  }
-
-		  // Clear sequence buffer after processing
-		  memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
-		  seq_index = 0;
+	  // Detect thumb press to process the sequence
+	  if (button_prev_state[0] == 0 && button_state[0] == 1) { // Thumb button pressed
+	      if (seq_index == 0) { // Sequence is empty
+	          if (word_index > 0) { // String exists to be sent
+	              send_word();
+	          } else {
+	              printf("No string to send!\r\n");
+	          }
+	      } else {
+	          printf("Processing sequence: %s\r\n", seq_buffer);
+	          process_sequence();
+	      }
 	  }
 
 	  HAL_Delay(50); // Reduce CPU load
