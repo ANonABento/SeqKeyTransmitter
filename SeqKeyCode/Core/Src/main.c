@@ -111,7 +111,7 @@ void process_sequence() {
 	if (strcmp(seq_buffer, "-|(") == 0) letter = 'J';
 	if (strcmp(seq_buffer, "|//") == 0) letter = 'K';
 	if (strcmp(seq_buffer, "|-") == 0) letter = 'L';
-	if (strcmp(seq_buffer, "|//|") == 0 || strcmp(seq_buffer, "|//") == 0) letter = 'M';
+	if (strcmp(seq_buffer, "|//|") == 0) letter = 'M';
 	if (strcmp(seq_buffer, "|/|") == 0 || strcmp(seq_buffer, "|/") == 0) letter = 'N';
 	if (strcmp(seq_buffer, "((") == 0) letter = 'O';
 	if (strcmp(seq_buffer, "|(-") == 0 || strcmp(seq_buffer, "/-") == 0) letter = 'P';
