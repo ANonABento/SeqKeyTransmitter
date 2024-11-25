@@ -148,7 +148,7 @@ void process_sequence() {
 		// Append the letter to the word buffer
 		if (word_index < WORD_BUFFER_SIZE - 1) {
 			word_buffer[word_index++] = letter;
-			word_buffer[word_index] = '\0'; // Null-terminate the string
+			word_buffer[word_index] = '\n'; // Null-terminate the string
 			printf("Letter added: %c\r\n", letter);
 		}
 		else {
@@ -165,9 +165,10 @@ void process_sequence() {
 }
 
 void send_word() {
-	HAL_UART_Transmit(&huart2, (uint8_t *)word_buffer, strlen(word_buffer), HAL_MAX_DELAY);
-
 	printf("String sent: %s\r\n", word_buffer);
+
+	HAL_UART_Transmit(&huart6, (uint8_t *)word_buffer, strlen(word_buffer), HAL_MAX_DELAY);
+	HAL_Delay(10);
 
 	// Reset word buffer
 	memset(word_buffer, 0, WORD_BUFFER_SIZE);
@@ -218,6 +219,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
 
   printf("UART Initialized \r\n");
