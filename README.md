@@ -1,5 +1,4 @@
 # SeqKey Transmitter Code
-<<<<<<< HEAD
 ECE 198 - Code for the STM32 microcontroller on the wrist-mounted housing
 
 In charge of:
@@ -12,4 +11,3 @@ Docs for the design document for this project: https://docs.google.com/document/
 
 =======
 ECE 198 - Code for STM32 project
->>>>>>> refs/remotes/origin/master
