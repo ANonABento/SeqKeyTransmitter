@@ -26,6 +26,205 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+#define SEQ_BUFFER_SIZE 32
+#define WORD_BUFFER_SIZE 32
+
+char seq_buffer[SEQ_BUFFER_SIZE] = {0}; // Holds the 4-button sequence
+char word_buffer[WORD_BUFFER_SIZE] = {0}; // Holds the constructed string
+uint8_t seq_index = 0; // Tracks the sequence length
+uint8_t word_index = 0; // Tracks the word length
+
+uint8_t button_state[5] = {0};      // Current button state
+uint8_t button_prev_state[5] = {0}; // Previous button state
+char button_chars[4] = {'|', '-', '/', '('}; // Buttons for sequence (excluding thumb)
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+int _write(int file, char *ptr, int len) {
+	HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+	return len;
+}
+
+void update_button_states();
+void process_sequence();
+void reset_buffers();
+void send_string();
+
+void update_button_states() {
+	// Update previous states
+	for (int i = 0; i < 5; i++) {
+		button_prev_state[i] = button_state[i];
+	}
+
+	// Read current button states
+	button_state[0] = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8) == GPIO_PIN_RESET; // Thumb
+	button_state[1] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == GPIO_PIN_RESET; // Index
+	button_state[2] = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET; // Middle
+	button_state[3] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_3) == GPIO_PIN_RESET; // Ring
+	button_state[4] = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET; // Pinky
+}
+
+void process_sequence() {
+	// Map sequence to a letter
+	char letter = 0;
+
+	// Letter mappings (A-Z)
+	if (strcmp(seq_buffer, "//-") == 0 || strcmp(seq_buffer, "/") == 0) letter = 'A';
+	if (strcmp(seq_buffer, "|((") == 0 || strcmp(seq_buffer, "-(") == 0) letter = 'B';
+	if (strcmp(seq_buffer, "(") == 0) letter = 'C';
+	if (strcmp(seq_buffer, "|(") == 0) letter = 'D';
+	if (strcmp(seq_buffer, "---") == 0 || strcmp(seq_buffer, "-") == 0) letter = 'E';
+	if (strcmp(seq_buffer, "|--") == 0 || strcmp(seq_buffer, "--") == 0) letter = 'F';
+	if (strcmp(seq_buffer, "(-|") == 0) letter = 'G';
+	if (strcmp(seq_buffer, "|-|") == 0 || strcmp(seq_buffer, "||") == 0) letter = 'H';
+	if (strcmp(seq_buffer, "-|-") == 0 || strcmp(seq_buffer, "|") == 0) letter = 'I';
+	if (strcmp(seq_buffer, "-|(") == 0) letter = 'J';
+	if (strcmp(seq_buffer, "|//") == 0) letter = 'K';
+	if (strcmp(seq_buffer, "|-") == 0) letter = 'L';
+	if (strcmp(seq_buffer, "|//|") == 0) letter = 'M';
+	if (strcmp(seq_buffer, "|/|") == 0 || strcmp(seq_buffer, "|/") == 0) letter = 'N';
+	if (strcmp(seq_buffer, "((") == 0) letter = 'O';
+	if (strcmp(seq_buffer, "|(-") == 0 || strcmp(seq_buffer, "/-") == 0) letter = 'P';
+	if (strcmp(seq_buffer, "((/") == 0) letter = 'Q';
+	if (strcmp(seq_buffer, "|(/") == 0 || strcmp(seq_buffer, "(/") == 0) letter = 'R';
+	if (strcmp(seq_buffer, "(-(") == 0 || strcmp(seq_buffer, "(-") == 0) letter = 'S';
+	if (strcmp(seq_buffer, "-|") == 0) letter = 'T';
+	if (strcmp(seq_buffer, "|(|") == 0 || strcmp(seq_buffer, "(|") == 0) letter = 'U';
+	if (strcmp(seq_buffer, "/(/") == 0 || strcmp(seq_buffer, "/(") == 0) letter = 'V';
+	if (strcmp(seq_buffer, "////") == 0 || strcmp(seq_buffer, "///") == 0) letter = 'W';
+	if (strcmp(seq_buffer, "//") == 0) letter = 'X';
+	if (strcmp(seq_buffer, "/|/") == 0 || strcmp(seq_buffer, "/|") == 0) letter = 'Y';
+	if (strcmp(seq_buffer, "-/-") == 0 || strcmp(seq_buffer, "-/") == 0) letter = 'Z';
+
+	// Number mappings (1-9, 0)
+//	if (strcmp(seq_buffer, "1") == 0) letter = '1';
+//	if (strcmp(seq_buffer, "2") == 0) letter = '2';
+//	if (strcmp(seq_buffer, "3") == 0) letter = '3';
+//	if (strcmp(seq_buffer, "4") == 0) letter = '4';
+//	if (strcmp(seq_buffer, "5") == 0) letter = '5';
+//	if (strcmp(seq_buffer, "6") == 0) letter = '6';
+//	if (strcmp(seq_buffer, "7") == 0) letter = '7';
+//	if (strcmp(seq_buffer, "8") == 0) letter = '8';
+//	if (strcmp(seq_buffer, "9") == 0) letter = '9';
+//	if (strcmp(seq_buffer, "0") == 0) letter = '0';
+
+	// Control Commands
+//	if (strcmp(seq_buffer, "combination of (-|/") == 0) letter = '_';  // Reset sequence
+//	if (strcmp(seq_buffer, "(/-|") == 0) letter = '-';  // Backspace
+//	if (strcmp(seq_buffer, "#") == 0) letter = '>';  // Enter letter
+//	if (strcmp(seq_buffer, "##") == 0) letter = '@';  // Send word
+
+	if (letter) {
+		// Append the letter to the word buffer
+		if (word_index < WORD_BUFFER_SIZE - 1) {
+			word_buffer[word_index++] = letter;
+			word_buffer[word_index] = '\n'; // Null-terminate the string
+			printf("Letter added: %c\r\n", letter);
+		}
+		else {
+			printf("Word buffer full!\r\n");
+		}
+	}
+	else {
+		printf("Invalid sequence: %s\r\n", seq_buffer);
+	}
+
+	// Clear sequence buffer after processing
+	memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
+	seq_index = 0;
+}
+
+void send_word() {
+	printf("String sent: %s\r\n", word_buffer);
+
+	HAL_UART_Transmit(&huart6, (uint8_t *)word_buffer, strlen(word_buffer), HAL_MAX_DELAY);
+	HAL_Delay(10);
+
+	// Reset word buffer
+	memset(word_buffer, 0, WORD_BUFFER_SIZE);
+	word_index = 0;
+
+	// Toggle LED for feedback
+	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+	HAL_Delay(300);
+	HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+}
+
+void reset_buffers() {
+	memset(seq_buffer, 0, SEQ_BUFFER_SIZE);
+	memset(word_buffer, 0, WORD_BUFFER_SIZE);
+	seq_index = 0;
+	word_index = 0;
+}
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_USART6_UART_Init();
+  /* USER CODE BEGIN 2 */
+
+  printf("UART Initialized \r\n");
+
 // Trie Node
 typedef struct TrieNode {
     struct TrieNode* children[26]; // Assuming only uppercase letters A-Z
