@@ -9,3 +9,5 @@ In charge of:
 Repository for the code on the STM32 receiver: https://github.com/ANonABento/SeqKeyReceiver
 
 Documentation: https://docs.google.com/document/d/e/2PACX-1vSZlVRa9IMrNhkbiVmcZW29am5aoeIO7rjiUgKUrrliUMo8blf8_EFDPEHkZtjk2CbSau6U4GJz2OMr/pub
+
+![picture](https://github.com/user-attachments/assets/1b224d85-86c8-44ee-9643-3813b8ec3871)
